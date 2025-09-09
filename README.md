@@ -63,7 +63,7 @@ python github_issue_analyzer.py owner/repository
 python github_issue_analyzer.py [repository] [options]
 
 Required:
-  repository              GitHub repository in format owner/repo (e.g., elastic/docs-content)
+  repository              GitHub repository in format owner/repo (e.g., microsoft/vscode)
 
 Optional:
   --token TOKEN          GitHub personal access token (alternative to GITHUB_TOKEN env var)
@@ -78,32 +78,32 @@ Optional:
 
 **Basic analysis:**
 ```bash
-python github_issue_analyzer.py elastic/docs-content
+python github_issue_analyzer.py microsoft/vscode
 ```
 
 **Analyze only external user issues:**
 ```bash
-python github_issue_analyzer.py elastic/docs-content --exclude-members
+python github_issue_analyzer.py microsoft/vscode --exclude-members
 ```
 
 **Show separate statistics for members vs external users:**
 ```bash
-python github_issue_analyzer.py elastic/docs-content --separate-members
+python github_issue_analyzer.py microsoft/vscode --separate-members
 ```
 
 **Use custom token:**
 ```bash
-python github_issue_analyzer.py elastic/docs-content --token "ghp_your_token_here"
+python github_issue_analyzer.py microsoft/vscode --token "ghp_your_token_here"
 ```
 
 **Generate HTML report with histogram chart:**
 ```bash
-python github_issue_analyzer.py elastic/docs-content --html report.html
+python github_issue_analyzer.py microsoft/vscode --html report.html
 ```
 
 **Generate HTML report with separate member analysis:**
 ```bash
-python github_issue_analyzer.py elastic/docs-content --separate-members --html report.html
+python github_issue_analyzer.py microsoft/vscode --separate-members --html report.html
 ```
 
 ## Output
