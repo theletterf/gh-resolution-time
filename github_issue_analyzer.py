@@ -11,6 +11,7 @@ import sys
 import argparse
 import requests
 import statistics
+import csv
 from datetime import datetime, timezone
 from typing import List, Dict, Optional
 import time
@@ -558,7 +559,7 @@ class GitHubIssueAnalyzer:
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Issue ''' + metric_name + ''' Distribution (Histogram)',
+                        text: 'Issue {metric_name} Distribution (Histogram)',
                         font: { size: 18 }
                     },
                     legend: {
@@ -570,7 +571,7 @@ class GitHubIssueAnalyzer:
                     x: {
                         title: {
                             display: true,
-                            text: metric_name + ' (Days)'
+                            text: '{metric_name} (Days)'
                         }
                     },
                     y: {
@@ -597,6 +598,106 @@ class GitHubIssueAnalyzer:
             print(f"\n📊 HTML report generated: {filename}")
         except Exception as e:
             print(f"Error generating HTML report: {e}")
+    
+    def generate_csv_reports(self, durations_data: Dict, base_filename: str, repo: str, metric_name: str = "Resolution Time"):
+        """Generate CSV files for chart data."""
+        
+        # Prepare data for all categories
+        all_data = []
+        
+        for category, durations in durations_data.items():
+            if durations:
+                days = [d / 24 for d in durations]  # Convert hours to days
+                all_data.append({
+                    'name': category,
+                    'data': days,
+                    'stats': self.analyze_resolution_times(durations)
+                })
+        
+        if not all_data:
+            print("No data to generate CSV reports.")
+            return
+            
+        # Create histogram bins (0-100 days with 5-day intervals)
+        max_days = max(max(item['data']) for item in all_data)
+        bin_size = 5
+        max_bin = min(int(max_days) + bin_size, 100)  # Cap at 100 days for readability
+        bins = list(range(0, max_bin + bin_size, bin_size))
+        
+        # Generate histogram CSV
+        histogram_filename = base_filename.replace('.html', '_histogram.csv')
+        try:
+            with open(histogram_filename, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.writer(csvfile)
+                
+                # Write header
+                header = ['Bin_Range'] + [item['name'] for item in all_data]
+                writer.writerow(header)
+                
+                # Calculate histogram data for each category
+                histogram_data = {}
+                for item in all_data:
+                    hist_counts = []
+                    for i in range(len(bins) - 1):
+                        count = sum(1 for d in item['data'] if bins[i] <= d < bins[i + 1])
+                        hist_counts.append(count)
+                    histogram_data[item['name']] = hist_counts
+                
+                # Write histogram data
+                for i in range(len(bins) - 1):
+                    row = [f"{bins[i]}-{bins[i+1]}"]
+                    for item in all_data:
+                        row.append(histogram_data[item['name']][i])
+                    writer.writerow(row)
+                    
+            print(f"📊 CSV histogram data generated: {histogram_filename}")
+        except Exception as e:
+            print(f"Error generating CSV histogram: {e}")
+        
+        # Generate statistics CSV
+        stats_filename = base_filename.replace('.html', '_statistics.csv')
+        try:
+            with open(stats_filename, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.writer(csvfile)
+                
+                # Write header
+                writer.writerow(['Category', 'Total_Issues', f'Mean_{metric_name.replace(" ", "_")}_Days', 
+                               f'Median_{metric_name.replace(" ", "_")}_Days', 'P90_Days', 'Min_Days', 'Max_Days'])
+                
+                # Write statistics for each category
+                for item in all_data:
+                    stats = item['stats']
+                    writer.writerow([
+                        item['name'],
+                        stats['count'],
+                        round(stats['mean_days'], 2),
+                        round(stats['median_days'], 2),
+                        round(stats['p90_days'], 2),
+                        round(stats['min_days'], 2),
+                        round(stats['max_days'], 2)
+                    ])
+                    
+            print(f"📊 CSV statistics generated: {stats_filename}")
+        except Exception as e:
+            print(f"Error generating CSV statistics: {e}")
+        
+        # Generate raw data CSV
+        raw_filename = base_filename.replace('.html', '_raw_data.csv')
+        try:
+            with open(raw_filename, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.writer(csvfile)
+                
+                # Write header
+                writer.writerow(['Category', f'{metric_name.replace(" ", "_")}_Days'])
+                
+                # Write all individual data points
+                for item in all_data:
+                    for value in item['data']:
+                        writer.writerow([item['name'], round(value, 2)])
+                        
+            print(f"📊 CSV raw data generated: {raw_filename}")
+        except Exception as e:
+            print(f"Error generating CSV raw data: {e}")
 
 
 def main():
@@ -711,6 +812,7 @@ def main():
             # Generate HTML report if requested
             if args.html and html_data:
                 analyzer.generate_html_report(html_data, args.html, args.repo, metric_name)
+                analyzer.generate_csv_reports(html_data, args.html, args.repo, metric_name)
         else:
             print("Analysis of resolution times is only available for closed issues.")
             

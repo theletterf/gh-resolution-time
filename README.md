@@ -11,6 +11,7 @@ A Python tool for analyzing GitHub issue resolution times and first response tim
 - Filters out pull requests automatically
 - Supports filtering by repository membership
 - Interactive HTML reports with histogram charts
+- Automatic CSV export for data analysis and integration
 - Handles GitHub API pagination and rate limiting
 - Works with organization repositories requiring SSO
 
@@ -111,6 +112,12 @@ python github_issue_analyzer.py microsoft/vscode --html report.html
 python github_issue_analyzer.py microsoft/vscode --separate-members --html report.html
 ```
 
+**This will automatically generate:**
+- `report.html` - Interactive HTML report with charts
+- `report_histogram.csv` - Histogram data for chart reproduction
+- `report_statistics.csv` - Summary statistics for each category  
+- `report_raw_data.csv` - All individual data points for further analysis
+
 **Analyze time-to-first-response:**
 ```bash
 python github_issue_analyzer.py microsoft/vscode --first-response
@@ -175,6 +182,51 @@ The HTML report includes:
 - Color-coded categories for different user types
 - Detailed statistics tables for each category
 - Professional styling suitable for presentations or reports
+
+### CSV Data Export
+
+When generating HTML reports (`--html` option), the tool automatically creates three CSV files for data analysis and integration:
+
+**1. Histogram Data (`*_histogram.csv`)**
+```csv
+Bin_Range,Repository Members Issues,External Users Issues
+0-5,147,40
+5-10,32,4
+10-15,30,1
+...
+```
+- Binned data used for histogram charts
+- Ready for importing into Excel, R, or other analysis tools
+- Matches the visual representation in HTML charts
+
+**2. Statistics Summary (`*_statistics.csv`)**
+```csv
+Category,Total_Issues,Mean_First_Response_Time_Days,Median_First_Response_Time_Days,P90_Days,Min_Days,Max_Days
+Repository Members Issues,336,22.1,7.1,60.7,0.0,301.9
+External Users Issues,57,11.2,0.8,49.2,0.0,108.2
+```
+- Summary statistics for each category
+- Perfect for dashboards and reporting tools
+- Includes key metrics: mean, median, percentiles, range
+
+**3. Raw Data (`*_raw_data.csv`)**
+```csv
+Category,First_Response_Time_Days
+Repository Members Issues,0.5
+Repository Members Issues,1.2
+External Users Issues,0.1
+...
+```
+- Individual data points for each issue
+- Enables custom analysis and visualization
+- Useful for statistical modeling and deeper insights
+
+**Use Cases:**
+- Import into Excel for custom charts and pivot tables
+- Feed data into BI tools like Power BI or Tableau
+- Perform statistical analysis in R or Python pandas
+- Create custom dashboards and monitoring systems
+- Archive historical data for trend analysis
 
 ## Time-to-First-Response Analysis
 
