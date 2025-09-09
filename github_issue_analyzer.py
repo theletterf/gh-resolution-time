@@ -559,7 +559,7 @@ class GitHubIssueAnalyzer:
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Issue {metric_name} Distribution (Histogram)',
+                        text: 'Time Distribution (Histogram)',
                         font: { size: 18 }
                     },
                     legend: {
@@ -571,7 +571,7 @@ class GitHubIssueAnalyzer:
                     x: {
                         title: {
                             display: true,
-                            text: '{metric_name} (Days)'
+                            text: 'Time (Days)'
                         }
                     },
                     y: {
@@ -599,7 +599,7 @@ class GitHubIssueAnalyzer:
         except Exception as e:
             print(f"Error generating HTML report: {e}")
     
-    def generate_csv_reports(self, durations_data: Dict, base_filename: str, repo: str, metric_name: str = "Resolution Time"):
+    def generate_csv_reports(self, durations_data: Dict, detailed_data: Dict, base_filename: str, repo: str, metric_name: str = "Resolution Time"):
         """Generate CSV files for chart data."""
         
         # Prepare data for all categories
@@ -681,23 +681,220 @@ class GitHubIssueAnalyzer:
         except Exception as e:
             print(f"Error generating CSV statistics: {e}")
         
-        # Generate raw data CSV
+        # Generate enhanced raw data CSV with comprehensive issue metadata
         raw_filename = base_filename.replace('.html', '_raw_data.csv')
         try:
             with open(raw_filename, 'w', newline='', encoding='utf-8') as csvfile:
                 writer = csv.writer(csvfile)
                 
-                # Write header
-                writer.writerow(['Category', f'{metric_name.replace(" ", "_")}_Days'])
+                # Define comprehensive header based on analysis type
+                if metric_name == "First Response Time":
+                    header = [
+                        'category', 'repository', 'issue_number', 'issue_url', 'issue_title',
+                        'issue_state', 'issue_state_reason', 'created_at', 'first_response_at',
+                        'time_hours', 'time_days', 'author_login', 'author_type',
+                        'first_responder_login', 'assignees', 'labels', 'milestone',
+                        'comment_count', 'body_preview'
+                    ]
+                else:
+                    header = [
+                        'category', 'repository', 'issue_number', 'issue_url', 'issue_title',
+                        'issue_state', 'issue_state_reason', 'created_at', 'closed_at',
+                        'time_hours', 'time_days', 'author_login', 'author_type',
+                        'closer_login', 'assignees', 'labels', 'milestone',
+                        'comment_count', 'body_preview'
+                    ]
                 
-                # Write all individual data points
-                for item in all_data:
-                    for value in item['data']:
-                        writer.writerow([item['name'], round(value, 2)])
+                writer.writerow(header)
+                
+                # Write detailed data for each category
+                for category_name, issues_data in detailed_data.items():
+                    for issue_data in issues_data:
+                        # Create row based on header order
+                        if metric_name == "First Response Time":
+                            row = [
+                                issue_data.get('category', ''),
+                                issue_data.get('repository', ''),
+                                issue_data.get('issue_number', ''),
+                                issue_data.get('issue_url', ''),
+                                issue_data.get('issue_title', ''),
+                                issue_data.get('issue_state', ''),
+                                issue_data.get('issue_state_reason', ''),
+                                issue_data.get('created_at', ''),
+                                issue_data.get('first_response_at', ''),
+                                issue_data.get('time_hours', ''),
+                                issue_data.get('time_days', ''),
+                                issue_data.get('author_login', ''),
+                                issue_data.get('author_type', ''),
+                                issue_data.get('first_responder_login', ''),
+                                issue_data.get('assignees', ''),
+                                issue_data.get('labels', ''),
+                                issue_data.get('milestone', ''),
+                                issue_data.get('comment_count', ''),
+                                issue_data.get('body_preview', '')
+                            ]
+                        else:
+                            row = [
+                                issue_data.get('category', ''),
+                                issue_data.get('repository', ''),
+                                issue_data.get('issue_number', ''),
+                                issue_data.get('issue_url', ''),
+                                issue_data.get('issue_title', ''),
+                                issue_data.get('issue_state', ''),
+                                issue_data.get('issue_state_reason', ''),
+                                issue_data.get('created_at', ''),
+                                issue_data.get('closed_at', ''),
+                                issue_data.get('time_hours', ''),
+                                issue_data.get('time_days', ''),
+                                issue_data.get('author_login', ''),
+                                issue_data.get('author_type', ''),
+                                issue_data.get('closer_login', ''),
+                                issue_data.get('assignees', ''),
+                                issue_data.get('labels', ''),
+                                issue_data.get('milestone', ''),
+                                issue_data.get('comment_count', ''),
+                                issue_data.get('body_preview', '')
+                            ]
                         
-            print(f"📊 CSV raw data generated: {raw_filename}")
+                        writer.writerow(row)
+                        
+            print(f"📊 Enhanced CSV raw data generated: {raw_filename}")
+            print(f"   Contains comprehensive metadata for {sum(len(issues) for issues in detailed_data.values())} issues")
         except Exception as e:
-            print(f"Error generating CSV raw data: {e}")
+            print(f"Error generating enhanced CSV raw data: {e}")
+
+    def calculate_resolution_times_detailed(self, issues: List[Dict], collaborators: set) -> List[Dict]:
+        """Calculate resolution times with comprehensive issue metadata for CSV export."""
+        detailed_data = []
+        
+        for issue in issues:
+            if not issue.get('closed_at'):
+                continue
+                
+            try:
+                created_at = datetime.fromisoformat(issue['created_at'].replace('Z', '+00:00'))
+                closed_at = datetime.fromisoformat(issue['closed_at'].replace('Z', '+00:00'))
+                
+                duration = closed_at - created_at
+                hours = duration.total_seconds() / 3600
+                days = hours / 24
+                
+                # Determine user category
+                author_login = issue.get('user', {}).get('login', 'unknown')
+                is_member = author_login in collaborators
+                category = 'Repository Members Issues' if is_member else 'External Users Issues'
+                
+                # Extract comprehensive metadata
+                issue_data = {
+                    'category': category,
+                    'repository': issue.get('repository', {}).get('full_name', '') or '',
+                    'issue_number': issue.get('number', ''),
+                    'issue_url': issue.get('html_url', ''),
+                    'issue_title': issue.get('title', ''),
+                    'issue_state': issue.get('state', ''),
+                    'issue_state_reason': issue.get('state_reason', ''),
+                    'created_at': issue.get('created_at', ''),
+                    'closed_at': issue.get('closed_at', ''),
+                    'time_hours': round(hours, 2),
+                    'time_days': round(days, 2),
+                    'author_login': author_login,
+                    'author_type': 'member' if is_member else 'external',
+                    'closer_login': issue.get('closed_by', {}).get('login', '') if issue.get('closed_by') else '',
+                    'assignees': ','.join([a.get('login', '') for a in issue.get('assignees', [])]),
+                    'labels': ','.join([l.get('name', '') for l in issue.get('labels', [])]),
+                    'milestone': issue.get('milestone', {}).get('title', '') if issue.get('milestone') else '',
+                    'comment_count': issue.get('comments', 0),
+                    'body_preview': (issue.get('body', '') or '')[:200].replace('\n', ' ').replace('\r', ' ').strip()
+                }
+                
+                detailed_data.append(issue_data)
+                
+            except (ValueError, KeyError) as e:
+                print(f"Warning: Could not parse data for issue #{issue.get('number')}: {e}")
+                continue
+                
+        return detailed_data
+    
+    def calculate_first_response_times_detailed(self, issues: List[Dict], collaborators: set, repo: str) -> List[Dict]:
+        """Calculate first response times with comprehensive issue metadata for CSV export."""
+        detailed_data = []
+        
+        for issue in issues:
+            response_hours = self.calculate_first_response_time(issue, collaborators, repo)
+            if response_hours is None:
+                continue
+                
+            try:
+                created_at = datetime.fromisoformat(issue['created_at'].replace('Z', '+00:00'))
+                
+                # Calculate first response timestamp
+                first_response_at = created_at + (datetime.utcnow().replace(tzinfo=timezone.utc) - created_at) * (
+                    response_hours / max(1, (datetime.utcnow().replace(tzinfo=timezone.utc) - created_at).total_seconds() / 3600)
+                )
+                
+                # Determine user category
+                author_login = issue.get('user', {}).get('login', 'unknown')
+                is_member = author_login in collaborators
+                category = 'Repository Members Issues' if is_member else 'External Users Issues'
+                
+                # Get first responder info
+                first_responder = self.get_first_responder_info(issue, collaborators, repo)
+                
+                # Extract comprehensive metadata
+                issue_data = {
+                    'category': category,
+                    'repository': repo,
+                    'issue_number': issue.get('number', ''),
+                    'issue_url': issue.get('html_url', ''),
+                    'issue_title': issue.get('title', ''),
+                    'issue_state': issue.get('state', ''),
+                    'issue_state_reason': issue.get('state_reason', ''),
+                    'created_at': issue.get('created_at', ''),
+                    'first_response_at': first_response_at.isoformat(),
+                    'time_hours': round(response_hours, 2),
+                    'time_days': round(response_hours / 24, 2),
+                    'author_login': author_login,
+                    'author_type': 'member' if is_member else 'external',
+                    'first_responder_login': first_responder,
+                    'assignees': ','.join([a.get('login', '') for a in issue.get('assignees', [])]),
+                    'labels': ','.join([l.get('name', '') for l in issue.get('labels', [])]),
+                    'milestone': issue.get('milestone', {}).get('title', '') if issue.get('milestone') else '',
+                    'comment_count': issue.get('comments', 0),
+                    'body_preview': (issue.get('body', '') or '')[:200].replace('\n', ' ').replace('\r', ' ').strip()
+                }
+                
+                detailed_data.append(issue_data)
+                
+            except (ValueError, KeyError) as e:
+                print(f"Warning: Could not parse data for issue #{issue.get('number')}: {e}")
+                continue
+                
+        return detailed_data
+    
+    def get_first_responder_info(self, issue: Dict, collaborators: set, repo: str) -> str:
+        """Get the login of the first repository member who responded to an issue."""
+        comments_url = issue.get('comments_url')
+        if not comments_url or issue.get('comments', 0) == 0:
+            return ''
+        
+        try:
+            response = self.session.get(comments_url, timeout=30)
+            response.raise_for_status()
+            comments = response.json()
+            
+            for comment in comments:
+                comment_user = comment.get('user', {})
+                if not comment_user:
+                    continue
+                    
+                commenter = comment_user.get('login', '')
+                if commenter in collaborators and not self.is_bot_user(comment_user):
+                    return commenter
+                    
+        except requests.RequestException:
+            pass
+            
+        return ''
 
 
 def main():
@@ -714,6 +911,8 @@ def main():
                        help='Exclude issues created by repository members')
     parser.add_argument('--html', metavar='FILENAME', 
                        help='Generate HTML report with histogram chart (e.g., --html report.html)')
+    parser.add_argument('--csv', action='store_true',
+                       help='Generate detailed CSV files with comprehensive issue data')
     parser.add_argument('--include-unresolved', action='store_true',
                        help='Include issues closed without resolution (not_planned state)')
     
@@ -818,7 +1017,60 @@ def main():
             # Generate HTML report if requested
             if args.html and html_data:
                 analyzer.generate_html_report(html_data, args.html, args.repo, metric_name)
-                analyzer.generate_csv_reports(html_data, args.html, args.repo, metric_name)
+            
+            # Generate CSV reports if requested
+            if args.csv and html_data:
+                # Determine base filename for CSV files
+                if args.html:
+                    csv_base_filename = args.html  # Use HTML filename as base
+                else:
+                    # Generate default CSV base filename
+                    analysis_type = "first-response" if args.first_response else "resolution-time"
+                    csv_base_filename = f"{args.repo.replace('/', '-')}-{analysis_type}-data.csv"
+                
+                # Collect detailed issue data for enhanced CSV
+                print("\n📊 Collecting detailed issue data for CSV export...")
+                detailed_csv_data = {}
+                
+                if args.separate_members or args.exclude_members:
+                    categorized = analyzer.categorize_issues(issues, collaborators)
+                    
+                    if args.exclude_members:
+                        # Only external issues
+                        if args.first_response:
+                            detailed_csv_data['External Users'] = analyzer.calculate_first_response_times_detailed(
+                                categorized['external'], collaborators, args.repo)
+                        else:
+                            detailed_csv_data['External Users'] = analyzer.calculate_resolution_times_detailed(
+                                categorized['external'], collaborators)
+                    
+                    elif args.separate_members:
+                        # Both member and external issues
+                        if categorized['member']:
+                            if args.first_response:
+                                detailed_csv_data['Repository Members'] = analyzer.calculate_first_response_times_detailed(
+                                    categorized['member'], collaborators, args.repo)
+                            else:
+                                detailed_csv_data['Repository Members'] = analyzer.calculate_resolution_times_detailed(
+                                    categorized['member'], collaborators)
+                        
+                        if categorized['external']:
+                            if args.first_response:
+                                detailed_csv_data['External Users'] = analyzer.calculate_first_response_times_detailed(
+                                    categorized['external'], collaborators, args.repo)
+                            else:
+                                detailed_csv_data['External Users'] = analyzer.calculate_resolution_times_detailed(
+                                    categorized['external'], collaborators)
+                else:
+                    # All issues together
+                    if args.first_response:
+                        detailed_csv_data['All Issues'] = analyzer.calculate_first_response_times_detailed(
+                            issues, collaborators, args.repo)
+                    else:
+                        detailed_csv_data['All Issues'] = analyzer.calculate_resolution_times_detailed(
+                            issues, collaborators)
+                
+                analyzer.generate_csv_reports(html_data, detailed_csv_data, csv_base_filename, args.repo, metric_name)
         else:
             print("Analysis of resolution times is only available for closed issues.")
             

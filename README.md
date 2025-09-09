@@ -76,6 +76,7 @@ Optional:
   --separate-members     Show separate analysis for members vs external users
   --exclude-members      Exclude issues created by repository members
   --html FILENAME        Generate HTML report with histogram chart
+  --csv                  Generate detailed CSV files with comprehensive issue data
   --include-unresolved   Include issues closed without resolution (not_planned state)
 
 Analysis Type (mutually exclusive):
@@ -146,6 +147,21 @@ python github_issue_analyzer.py microsoft/vscode --first-response --separate-mem
 python github_issue_analyzer.py microsoft/vscode --resolution-time --include-unresolved
 ```
 
+**Generate comprehensive CSV data files:**
+```bash
+python github_issue_analyzer.py microsoft/vscode --resolution-time --csv
+```
+
+**Generate both HTML and CSV reports:**
+```bash
+python github_issue_analyzer.py microsoft/vscode --first-response --separate-members --html report.html --csv
+```
+
+**CSV-only analysis with detailed issue metadata:**
+```bash
+python github_issue_analyzer.py microsoft/vscode --first-response --separate-members --csv
+```
+
 **Important Note:** You cannot use both analysis types simultaneously:
 ```bash
 # ❌ This will produce an error
@@ -205,7 +221,7 @@ The HTML report includes:
 
 ### CSV Data Export
 
-When generating HTML reports (`--html` option), the tool automatically creates three CSV files for data analysis and integration:
+When using the `--csv` flag, the tool generates three comprehensive CSV files for data analysis and integration:
 
 **1. Histogram Data (`*_histogram.csv`)**
 ```csv
@@ -229,24 +245,31 @@ External Users Issues,57,11.2,0.8,49.2,0.0,108.2
 - Perfect for dashboards and reporting tools
 - Includes key metrics: mean, median, percentiles, range
 
-**3. Raw Data (`*_raw_data.csv`)**
+**3. Enhanced Raw Data (`*_raw_data.csv`)**
 ```csv
-Category,First_Response_Time_Days
-Repository Members Issues,0.5
-Repository Members Issues,1.2
-External Users Issues,0.1
+category,repository,issue_number,issue_url,issue_title,issue_state,issue_state_reason,created_at,first_response_at,time_hours,time_days,author_login,author_type,first_responder_login,assignees,labels,milestone,comment_count,body_preview
+External Users Issues,microsoft/vscode,12345,https://github.com/microsoft/vscode/issues/12345,Fix syntax highlighting bug,closed,completed,2024-01-15T10:30:00Z,2024-01-15T14:45:00Z,4.25,0.18,user123,external,vscode-team,johndoe,bug;high-priority,1.85.0,5,"The syntax highlighting doesn't work properly when using..."
+Repository Members Issues,microsoft/vscode,12346,https://github.com/microsoft/vscode/issues/12346,Add new feature request,open,,2024-01-16T09:15:00Z,2024-01-16T11:30:00Z,2.25,0.09,team-member,member,maintainer-xyz,"alice,bob",feature-request;needs-investigation,,12,"We should consider adding support for..."
 ...
 ```
-- Individual data points for each issue
-- Enables custom analysis and visualization
-- Useful for statistical modeling and deeper insights
+- **Comprehensive issue metadata** including URLs, titles, dates, users, labels, and more
+- **Full audit trail** with creation/response timestamps and user information
+- **Rich context** with issue body previews, assignees, milestones, and comment counts
+- **Perfect for business intelligence** and detailed reporting workflows
+- **Export-ready format** for external analysis tools and databases
+
+**CSV Generation Options:**
+- **`--csv` only**: Generates CSV files without HTML report
+- **`--html --csv`**: Generates both HTML report and CSV files  
+- **Default**: No CSV files generated (HTML only if `--html` is specified)
 
 **Use Cases:**
-- Import into Excel for custom charts and pivot tables
-- Feed data into BI tools like Power BI or Tableau
-- Perform statistical analysis in R or Python pandas
-- Create custom dashboards and monitoring systems
-- Archive historical data for trend analysis
+- **Business Intelligence**: Import into Power BI, Tableau, or similar BI tools
+- **Custom Analysis**: Load into Python pandas, R, or Excel for specialized analysis
+- **Data Integration**: Feed into existing reporting pipelines and databases  
+- **Audit Trails**: Maintain detailed historical records with full issue metadata
+- **SLA Monitoring**: Track response times with user and timestamp details
+- **Trend Analysis**: Archive data over time to identify patterns and improvements
 
 ## Time-to-First-Response Analysis
 
