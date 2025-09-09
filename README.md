@@ -76,15 +76,23 @@ Optional:
   --separate-members     Show separate analysis for members vs external users
   --exclude-members      Exclude issues created by repository members
   --html FILENAME        Generate HTML report with histogram chart
-  --first-response       Analyze time-to-first-response instead of resolution time
   --include-unresolved   Include issues closed without resolution (not_planned state)
+
+Analysis Type (mutually exclusive):
+  --resolution-time      Analyze issue resolution time (default)
+  --first-response       Analyze time-to-first-response from repository members
 ```
 
 ### Examples
 
-**Basic analysis:**
+**Basic resolution time analysis (default):**
 ```bash
 python github_issue_analyzer.py microsoft/vscode
+```
+
+**Explicit resolution time analysis:**
+```bash
+python github_issue_analyzer.py microsoft/vscode --resolution-time
 ```
 
 **Analyze only external user issues:**
@@ -102,21 +110,21 @@ python github_issue_analyzer.py microsoft/vscode --separate-members
 python github_issue_analyzer.py microsoft/vscode --token "ghp_your_token_here"
 ```
 
-**Generate HTML report with histogram chart:**
+**Generate HTML report for resolution times:**
 ```bash
-python github_issue_analyzer.py microsoft/vscode --html report.html
+python github_issue_analyzer.py microsoft/vscode --resolution-time --html resolution-report.html
 ```
 
 **Generate HTML report with separate member analysis:**
 ```bash
-python github_issue_analyzer.py microsoft/vscode --separate-members --html report.html
+python github_issue_analyzer.py microsoft/vscode --resolution-time --separate-members --html resolution-report.html
 ```
 
 **This will automatically generate:**
-- `report.html` - Interactive HTML report with charts
-- `report_histogram.csv` - Histogram data for chart reproduction
-- `report_statistics.csv` - Summary statistics for each category  
-- `report_raw_data.csv` - All individual data points for further analysis
+- `resolution-report.html` - Interactive HTML report with charts
+- `resolution-report_histogram.csv` - Histogram data for chart reproduction
+- `resolution-report_statistics.csv` - Summary statistics for each category  
+- `resolution-report_raw_data.csv` - All individual data points for further analysis
 
 **Analyze time-to-first-response:**
 ```bash
@@ -125,12 +133,24 @@ python github_issue_analyzer.py microsoft/vscode --first-response
 
 **Generate HTML report for first response times:**
 ```bash
-python github_issue_analyzer.py microsoft/vscode --first-response --html response-times.html
+python github_issue_analyzer.py microsoft/vscode --first-response --html first-response-report.html
+```
+
+**First response analysis with member separation:**
+```bash
+python github_issue_analyzer.py microsoft/vscode --first-response --separate-members --html first-response-report.html
 ```
 
 **Include all closed issues (resolved + unresolved):**
 ```bash
-python github_issue_analyzer.py microsoft/vscode --include-unresolved
+python github_issue_analyzer.py microsoft/vscode --resolution-time --include-unresolved
+```
+
+**Important Note:** You cannot use both analysis types simultaneously:
+```bash
+# ❌ This will produce an error
+python github_issue_analyzer.py microsoft/vscode --resolution-time --first-response
+# error: argument --first-response: not allowed with argument --resolution-time
 ```
 
 ## Output
