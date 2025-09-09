@@ -828,8 +828,8 @@ class GitHubIssueAnalyzer:
                 created_at = datetime.fromisoformat(issue['created_at'].replace('Z', '+00:00'))
                 
                 # Calculate first response timestamp
-                first_response_at = created_at + (datetime.utcnow().replace(tzinfo=timezone.utc) - created_at) * (
-                    response_hours / max(1, (datetime.utcnow().replace(tzinfo=timezone.utc) - created_at).total_seconds() / 3600)
+                first_response_at = created_at + (datetime.now(timezone.utc) - created_at) * (
+                    response_hours / max(1, (datetime.now(timezone.utc) - created_at).total_seconds() / 3600)
                 )
                 
                 # Determine user category
