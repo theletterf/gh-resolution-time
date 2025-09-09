@@ -714,10 +714,15 @@ def main():
                        help='Exclude issues created by repository members')
     parser.add_argument('--html', metavar='FILENAME', 
                        help='Generate HTML report with histogram chart (e.g., --html report.html)')
-    parser.add_argument('--first-response', action='store_true',
-                       help='Analyze time-to-first-response instead of resolution time')
     parser.add_argument('--include-unresolved', action='store_true',
                        help='Include issues closed without resolution (not_planned state)')
+    
+    # Analysis type - mutually exclusive options
+    analysis_group = parser.add_mutually_exclusive_group()
+    analysis_group.add_argument('--resolution-time', action='store_true',
+                               help='Analyze issue resolution time (default)')
+    analysis_group.add_argument('--first-response', action='store_true',
+                               help='Analyze time-to-first-response from repository members')
     
     args = parser.parse_args()
     
@@ -735,6 +740,7 @@ def main():
             analysis_type = "FIRST RESPONSE TIME"
             calculate_func = lambda issues_list, collaborators: analyzer.calculate_first_response_times(issues_list, collaborators, args.repo)
         else:
+            # Default to resolution time analysis
             metric_name = "Resolution Time"
             analysis_type = "RESOLUTION TIME"
             calculate_func = lambda issues_list, collaborators: analyzer.calculate_resolution_times(issues_list)
