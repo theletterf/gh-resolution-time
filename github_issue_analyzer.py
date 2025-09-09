@@ -214,6 +214,30 @@ class GitHubIssueAnalyzer:
             'external': external_issues
         }
     
+    def categorize_by_resolution(self, issues: List[Dict]) -> Dict[str, List[Dict]]:
+        """Categorize issues by resolution status using state_reason."""
+        resolved_issues = []
+        closed_issues = []
+        
+        for issue in issues:
+            state_reason = issue.get('state_reason')
+            
+            # GitHub's state_reason values:
+            # - 'completed': Issue was closed as completed/resolved
+            # - 'not_planned': Issue was closed without being resolved (duplicate, wontfix, etc.)
+            # - None/null: Older issues without state_reason (treat as resolved for backward compatibility)
+            
+            if state_reason == 'not_planned':
+                closed_issues.append(issue)
+            else:
+                # 'completed' or None (older issues) - treat as resolved
+                resolved_issues.append(issue)
+                
+        return {
+            'resolved': resolved_issues,
+            'closed_unresolved': closed_issues
+        }
+    
     def calculate_resolution_times(self, issues: List[Dict]) -> List[float]:
         """Calculate resolution times in hours for closed issues."""
         durations = []
@@ -534,7 +558,7 @@ class GitHubIssueAnalyzer:
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Issue {metric_name} Distribution (Histogram)',
+                        text: 'Issue ''' + metric_name + ''' Distribution (Histogram)',
                         font: { size: 18 }
                     },
                     legend: {
@@ -546,7 +570,7 @@ class GitHubIssueAnalyzer:
                     x: {
                         title: {
                             display: true,
-                            text: '{metric_name} (Days)'
+                            text: '''' + metric_name + ''' (Days)'
                         }
                     },
                     y: {
@@ -591,6 +615,8 @@ def main():
                        help='Generate HTML report with histogram chart (e.g., --html report.html)')
     parser.add_argument('--first-response', action='store_true',
                        help='Analyze time-to-first-response instead of resolution time')
+    parser.add_argument('--include-unresolved', action='store_true',
+                       help='Include issues closed without resolution (not_planned state)')
     
     args = parser.parse_args()
     
@@ -613,6 +639,22 @@ def main():
             calculate_func = lambda issues_list, collaborators: analyzer.calculate_resolution_times(issues_list)
         
         if args.state != 'open' or args.first_response:
+            # Filter by resolution status if not including unresolved
+            if not args.include_unresolved:
+                resolution_categorized = analyzer.categorize_by_resolution(issues)
+                issues_to_analyze = resolution_categorized['resolved']
+                unresolved_count = len(resolution_categorized['closed_unresolved'])
+                
+                if unresolved_count > 0:
+                    print(f"Excluding {unresolved_count} issues closed without resolution (state_reason: not_planned)")
+                    print(f"Analyzing {len(issues_to_analyze)} resolved issues")
+                else:
+                    print(f"All {len(issues_to_analyze)} closed issues appear to be resolved")
+                    
+                issues = issues_to_analyze
+            else:
+                print(f"Including all closed issues regardless of resolution status")
+            
             # Prepare data for HTML report
             html_data = {}
             

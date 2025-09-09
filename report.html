@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub Issue Resolution Time Analysis - elastic/docs-content</title>
+    <title>GitHub Issue First Response Time Analysis - elastic/docs-content</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -93,14 +93,14 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Issue Resolution Time Analysis</h1>
+            <h1>Issue First Response Time Analysis</h1>
             <p>Repository: elastic/docs-content</p>
         </div>
         
         <div class="content">
             <div class="summary">
                 <h3>📊 Analysis Summary</h3>
-                <p>This report analyzes the time it takes to resolve GitHub issues, showing distribution patterns and key statistics.</p>
+                <p>This report analyzes GitHub issue first response time, showing distribution patterns and key statistics.</p>
             </div>
             
             <div class="chart-container">
@@ -112,46 +112,46 @@
                     <h3 style="color: #667eea">📈 Repository Members Issues Statistics</h3>
                     <div class="stats-row">
                         <span class="stats-label">Total Issues:</span>
-                        <span class="stats-value">583</span>
+                        <span class="stats-value">350</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Mean Resolution:</span>
-                        <span class="stats-value">47.8 days</span>
+                        <span class="stats-label">Mean First Response Time:</span>
+                        <span class="stats-value">25.1 days</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Median Resolution:</span>
-                        <span class="stats-value">22.0 days</span>
+                        <span class="stats-label">Median First Response Time:</span>
+                        <span class="stats-value">7.5 days</span>
                     </div>
                     <div class="stats-row">
                         <span class="stats-label">90th Percentile:</span>
-                        <span class="stats-value">92.8 days</span>
+                        <span class="stats-value">65.1 days</span>
                     </div>
                     <div class="stats-row">
                         <span class="stats-label">Range:</span>
-                        <span class="stats-value">0.0 - 1655.2 days</span>
+                        <span class="stats-value">0.0 - 561.8 days</span>
                     </div>
                 </div>
                 <div class="stats-card">
                     <h3 style="color: #f093fb">📈 External Users Issues Statistics</h3>
                     <div class="stats-row">
                         <span class="stats-label">Total Issues:</span>
-                        <span class="stats-value">78</span>
+                        <span class="stats-value">60</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Mean Resolution:</span>
-                        <span class="stats-value">66.0 days</span>
+                        <span class="stats-label">Mean First Response Time:</span>
+                        <span class="stats-value">24.9 days</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Median Resolution:</span>
-                        <span class="stats-value">18.3 days</span>
+                        <span class="stats-label">Median First Response Time:</span>
+                        <span class="stats-value">0.8 days</span>
                     </div>
                     <div class="stats-row">
                         <span class="stats-label">90th Percentile:</span>
-                        <span class="stats-value">91.2 days</span>
+                        <span class="stats-value">55.4 days</span>
                     </div>
                     <div class="stats-row">
                         <span class="stats-label">Range:</span>
-                        <span class="stats-value">0.0 - 1317.5 days</span>
+                        <span class="stats-value">0.0 - 828.9 days</span>
                     </div>
                 </div>
             </div>
@@ -180,7 +180,7 @@
         
         datasets.push({
             label: 'Repository Members Issues',
-            data: [122, 65, 53, 28, 48, 31, 25, 28, 19, 22, 17, 8, 11, 16, 8, 5, 5, 9, 7, 5],
+            data: [151, 32, 31, 22, 16, 12, 8, 9, 8, 8, 9, 3, 5, 3, 3, 1, 0, 4, 4, 2],
             backgroundColor: '#667eea80',
             borderColor: '#667eea',
             borderWidth: 2,
@@ -189,7 +189,7 @@
         
         datasets.push({
             label: 'External Users Issues',
-            data: [25, 6, 5, 8, 3, 4, 2, 1, 4, 5, 1, 1, 1, 0, 2, 2, 0, 0, 1, 0],
+            data: [41, 4, 1, 2, 1, 2, 0, 0, 1, 2, 0, 3, 0, 1, 0, 0, 0, 0, 0, 0],
             backgroundColor: '#f093fb80',
             borderColor: '#f093fb',
             borderWidth: 2,
@@ -209,7 +209,7 @@
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Issue Resolution Time Distribution (Histogram)',
+                        text: 'Issue {metric_name} Distribution (Histogram)',
                         font: { size: 18 }
                     },
                     legend: {
@@ -221,7 +221,7 @@
                     x: {
                         title: {
                             display: true,
-                            text: 'Resolution Time (Days)'
+                            text: '{metric_name} (Days)'
                         }
                     },
                     y: {

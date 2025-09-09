@@ -76,6 +76,7 @@ Optional:
   --exclude-members      Exclude issues created by repository members
   --html FILENAME        Generate HTML report with histogram chart
   --first-response       Analyze time-to-first-response instead of resolution time
+  --include-unresolved   Include issues closed without resolution (not_planned state)
 ```
 
 ### Examples
@@ -118,6 +119,11 @@ python github_issue_analyzer.py microsoft/vscode --first-response
 **Generate HTML report for first response times:**
 ```bash
 python github_issue_analyzer.py microsoft/vscode --first-response --html response-times.html
+```
+
+**Include all closed issues (resolved + unresolved):**
+```bash
+python github_issue_analyzer.py microsoft/vscode --include-unresolved
 ```
 
 ## Output
@@ -190,6 +196,26 @@ python github_issue_analyzer.py microsoft/vscode --first-response --separate-mem
 ```
 
 This shows how quickly the team responds to community issues vs internal team issues.
+
+## Resolved vs Closed Issues
+
+By default, the tool analyzes only **resolved** issues using GitHub's `state_reason` field:
+
+**Resolved issues (`state_reason: completed`):**
+- Issues that were actually fixed/implemented
+- Provides accurate resolution time metrics
+- Default behavior for meaningful analysis
+
+**Closed without resolution (`state_reason: not_planned`):**
+- Issues closed as duplicate, wontfix, invalid, etc.
+- Excluded by default since they weren't actually resolved
+- Include with `--include-unresolved` flag
+
+**Legacy issues:**
+- Older issues without `state_reason` are treated as resolved
+- Maintains backward compatibility with historical data
+
+This distinction provides more accurate metrics by separating actual problem resolution from administrative closures.
 
 ## Member Filtering
 
