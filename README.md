@@ -1,13 +1,16 @@
 # GitHub Issue Analyzer
 
-A Python tool for analyzing GitHub issue resolution times with support for filtering by repository membership.
+A Python tool for analyzing GitHub issue resolution times and first response times with support for filtering by repository membership.
 
 ## Features
 
-- Analyzes time-to-resolution for GitHub issues
+- **Dual Analysis Modes:**
+  - Time-to-resolution for GitHub issues
+  - Time-to-first-response from repository members (excluding bots)
 - Calculates comprehensive statistics (mean, median, percentiles, std deviation)
 - Filters out pull requests automatically
 - Supports filtering by repository membership
+- Interactive HTML reports with histogram charts
 - Handles GitHub API pagination and rate limiting
 - Works with organization repositories requiring SSO
 
@@ -72,6 +75,7 @@ Optional:
   --separate-members     Show separate analysis for members vs external users
   --exclude-members      Exclude issues created by repository members
   --html FILENAME        Generate HTML report with histogram chart
+  --first-response       Analyze time-to-first-response instead of resolution time
 ```
 
 ### Examples
@@ -104,6 +108,16 @@ python github_issue_analyzer.py microsoft/vscode --html report.html
 **Generate HTML report with separate member analysis:**
 ```bash
 python github_issue_analyzer.py microsoft/vscode --separate-members --html report.html
+```
+
+**Analyze time-to-first-response:**
+```bash
+python github_issue_analyzer.py microsoft/vscode --first-response
+```
+
+**Generate HTML report for first response times:**
+```bash
+python github_issue_analyzer.py microsoft/vscode --first-response --html response-times.html
 ```
 
 ## Output
@@ -155,6 +169,27 @@ The HTML report includes:
 - Color-coded categories for different user types
 - Detailed statistics tables for each category
 - Professional styling suitable for presentations or reports
+
+## Time-to-First-Response Analysis
+
+The `--first-response` option analyzes how quickly repository members respond to new issues:
+
+**What counts as "first response":**
+- First comment from a repository member (collaborator)
+- Excludes bot responses (dependabot, renovate, etc.)
+- Measures time from issue creation to first human member response
+
+**Use cases:**
+- Measuring customer support response times
+- SLA monitoring for issue acknowledgment
+- Comparing response times for different user types
+
+**Example output:**
+```bash
+python github_issue_analyzer.py microsoft/vscode --first-response --separate-members
+```
+
+This shows how quickly the team responds to community issues vs internal team issues.
 
 ## Member Filtering
 

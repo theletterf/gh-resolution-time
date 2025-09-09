@@ -68,6 +68,84 @@ class GitHubIssueAnalyzer:
         """Check if issue was created by a repository member."""
         author = issue.get('user', {}).get('login')
         return author in collaborators
+    
+    def is_bot_user(self, user: Dict) -> bool:
+        """Check if a user is a bot based on login and type."""
+        if not user:
+            return False
+        login = user.get('login', '').lower()
+        user_type = user.get('type', '').lower()
+        
+        # Common bot patterns
+        bot_patterns = ['bot', 'dependabot', 'renovate', 'greenkeeper', 'codecov']
+        return (user_type == 'bot' or 
+                any(pattern in login for pattern in bot_patterns) or
+                login.endswith('[bot]'))
+    
+    def fetch_issue_comments(self, repo: str, issue_number: int) -> List[Dict]:
+        """Fetch comments for a specific issue."""
+        url = f"https://api.github.com/repos/{repo}/issues/{issue_number}/comments"
+        comments = []
+        page = 1
+        
+        while True:
+            try:
+                response = self.session.get(url, params={'per_page': 100, 'page': page}, timeout=30)
+                response.raise_for_status()
+                
+                page_comments = response.json()
+                if not page_comments:
+                    break
+                    
+                comments.extend(page_comments)
+                
+                if len(page_comments) < 100:  # Last page
+                    break
+                    
+                page += 1
+                
+            except requests.exceptions.RequestException as e:
+                print(f"Warning: Could not fetch comments for issue #{issue_number}: {e}")
+                break
+                
+        return comments
+    
+    def calculate_first_response_time(self, issue: Dict, collaborators: set, repo: str) -> Optional[float]:
+        """Calculate time to first response from a non-bot member."""
+        if not issue.get('created_at'):
+            return None
+            
+        created_at = datetime.fromisoformat(issue['created_at'].replace('Z', '+00:00'))
+        issue_number = issue.get('number')
+        
+        if not issue_number:
+            return None
+            
+        # Fetch comments for this issue
+        comments = self.fetch_issue_comments(repo, issue_number)
+        
+        for comment in comments:
+            comment_user = comment.get('user')
+            if not comment_user:
+                continue
+                
+            # Skip if it's a bot
+            if self.is_bot_user(comment_user):
+                continue
+                
+            # Skip if it's not from a member
+            if comment_user.get('login') not in collaborators:
+                continue
+                
+            # Found first response from a non-bot member
+            try:
+                comment_time = datetime.fromisoformat(comment['created_at'].replace('Z', '+00:00'))
+                duration = comment_time - created_at
+                return duration.total_seconds() / 3600  # Return hours
+            except (ValueError, KeyError):
+                continue
+                
+        return None  # No response found
         
     def fetch_issues(self, repo: str, state: str = 'closed', per_page: int = 100) -> List[Dict]:
         """Fetch all issues from a repository with pagination."""
@@ -158,6 +236,22 @@ class GitHubIssueAnalyzer:
                 
         return durations
     
+    def calculate_first_response_times(self, issues: List[Dict], collaborators: set, repo: str) -> List[float]:
+        """Calculate first response times in hours for issues."""
+        response_times = []
+        
+        print(f"Analyzing first response times for {len(issues)} issues...")
+        for i, issue in enumerate(issues, 1):
+            if i % 10 == 0:  # Progress indicator
+                print(f"Processed {i}/{len(issues)} issues...", end='\r')
+                
+            response_time = self.calculate_first_response_time(issue, collaborators, repo)
+            if response_time is not None:
+                response_times.append(response_time)
+                
+        print(f"\nFound first response times for {len(response_times)}/{len(issues)} issues")
+        return response_times
+    
     def analyze_resolution_times(self, durations: List[float]) -> Dict:
         """Analyze resolution times and return statistics."""
         if not durations:
@@ -185,10 +279,10 @@ class GitHubIssueAnalyzer:
         
         return stats
     
-    def print_results(self, stats: Dict, title: str = "GITHUB ISSUE RESOLUTION TIME ANALYSIS"):
+    def print_results(self, stats: Dict, title: str = "GITHUB ISSUE ANALYSIS", metric_name: str = "RESOLUTION TIME"):
         """Print analysis results in a formatted way."""
         if not stats:
-            print("No closed issues found to analyze.")
+            print(f"No data found to analyze for {metric_name.lower()}.")
             return
             
         print(f"\n{'='*60}")
@@ -196,7 +290,7 @@ class GitHubIssueAnalyzer:
         print(f"{'='*60}")
         print(f"Total Issues Analyzed: {stats['count']:,}")
         print()
-        print("RESOLUTION TIME STATISTICS (in days):")
+        print(f"{metric_name} STATISTICS (in days):")
         print(f"  Mean:     {stats['mean_days']:.2f}")
         print(f"  Median:   {stats['median_days']:.2f}")
         print(f"  Min:      {stats['min_days']:.2f}")
@@ -210,7 +304,7 @@ class GitHubIssueAnalyzer:
         print(f"  95th:     {stats['p95_days']:.2f}")
         print(f"{'='*60}")
     
-    def generate_html_report(self, durations_data: Dict, filename: str, repo: str):
+    def generate_html_report(self, durations_data: Dict, filename: str, repo: str, metric_name: str = "Resolution Time"):
         """Generate HTML report with histogram chart using Chart.js."""
         
         # Prepare data for all categories
@@ -242,7 +336,7 @@ class GitHubIssueAnalyzer:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub Issue Resolution Time Analysis - {repo}</title>
+    <title>GitHub Issue {metric_name} Analysis - {repo}</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {{
@@ -332,14 +426,14 @@ class GitHubIssueAnalyzer:
 <body>
     <div class="container">
         <div class="header">
-            <h1>Issue Resolution Time Analysis</h1>
+            <h1>Issue {metric_name} Analysis</h1>
             <p>Repository: {repo}</p>
         </div>
         
         <div class="content">
             <div class="summary">
                 <h3>📊 Analysis Summary</h3>
-                <p>This report analyzes the time it takes to resolve GitHub issues, showing distribution patterns and key statistics.</p>
+                <p>This report analyzes GitHub issue {metric_name.lower()}, showing distribution patterns and key statistics.</p>
             </div>
             
             <div class="chart-container">
@@ -363,11 +457,11 @@ class GitHubIssueAnalyzer:
                         <span class="stats-value">{stats['count']:,}</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Mean Resolution:</span>
+                        <span class="stats-label">Mean {metric_name}:</span>
                         <span class="stats-value">{stats['mean_days']:.1f} days</span>
                     </div>
                     <div class="stats-row">
-                        <span class="stats-label">Median Resolution:</span>
+                        <span class="stats-label">Median {metric_name}:</span>
                         <span class="stats-value">{stats['median_days']:.1f} days</span>
                     </div>
                     <div class="stats-row">
@@ -440,7 +534,7 @@ class GitHubIssueAnalyzer:
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Issue Resolution Time Distribution (Histogram)',
+                        text: 'Issue {metric_name} Distribution (Histogram)',
                         font: { size: 18 }
                     },
                     legend: {
@@ -452,7 +546,7 @@ class GitHubIssueAnalyzer:
                     x: {
                         title: {
                             display: true,
-                            text: 'Resolution Time (Days)'
+                            text: '{metric_name} (Days)'
                         }
                     },
                     y: {
@@ -495,6 +589,8 @@ def main():
                        help='Exclude issues created by repository members')
     parser.add_argument('--html', metavar='FILENAME', 
                        help='Generate HTML report with histogram chart (e.g., --html report.html)')
+    parser.add_argument('--first-response', action='store_true',
+                       help='Analyze time-to-first-response instead of resolution time')
     
     args = parser.parse_args()
     
@@ -506,25 +602,38 @@ def main():
         issues = analyzer.fetch_issues(args.repo, args.state, args.per_page)
         print(f"\nTotal issues fetched: {len(issues)}")
         
-        if args.state != 'open':
+        # Determine analysis type and metric names
+        if args.first_response:
+            metric_name = "First Response Time"
+            analysis_type = "FIRST RESPONSE TIME"
+            calculate_func = lambda issues_list, collaborators: analyzer.calculate_first_response_times(issues_list, collaborators, args.repo)
+        else:
+            metric_name = "Resolution Time"
+            analysis_type = "RESOLUTION TIME"
+            calculate_func = lambda issues_list, collaborators: analyzer.calculate_resolution_times(issues_list)
+        
+        if args.state != 'open' or args.first_response:
             # Prepare data for HTML report
             html_data = {}
             
-            # Get collaborators if we need to filter/separate by membership
-            if args.separate_members or args.exclude_members:
+            # Get collaborators (needed for first response analysis or member filtering)
+            if args.separate_members or args.exclude_members or args.first_response:
                 print("Fetching repository collaborators...")
                 collaborators = analyzer.get_collaborators(args.repo)
+            else:
+                collaborators = set()
+            
+            if args.separate_members or args.exclude_members:
                 categorized = analyzer.categorize_issues(issues, collaborators)
                 
                 if args.exclude_members:
                     # Only analyze external issues
                     issues_to_analyze = categorized['external']
                     print(f"\nAnalyzing {len(issues_to_analyze)} external user issues (excluding {len(categorized['member'])} member issues)")
-                    durations = analyzer.calculate_resolution_times(issues_to_analyze)
+                    durations = calculate_func(issues_to_analyze, collaborators)
                     stats = analyzer.analyze_resolution_times(durations)
-                    analyzer.print_results(stats, "EXTERNAL USER ISSUES - RESOLUTION TIME ANALYSIS")
+                    analyzer.print_results(stats, f"EXTERNAL USER ISSUES - {analysis_type} ANALYSIS", analysis_type)
                     
-                    # Prepare HTML data
                     if args.html:
                         html_data['External Users'] = durations
                     
@@ -535,32 +644,31 @@ def main():
                     
                     # Analyze member issues
                     if categorized['member']:
-                        member_durations = analyzer.calculate_resolution_times(categorized['member'])
+                        member_durations = calculate_func(categorized['member'], collaborators)
                         member_stats = analyzer.analyze_resolution_times(member_durations)
-                        analyzer.print_results(member_stats, "REPOSITORY MEMBER ISSUES - RESOLUTION TIME ANALYSIS")
+                        analyzer.print_results(member_stats, f"REPOSITORY MEMBER ISSUES - {analysis_type} ANALYSIS", analysis_type)
                         if args.html:
                             html_data['Repository Members'] = member_durations
                     
                     # Analyze external issues
                     if categorized['external']:
-                        external_durations = analyzer.calculate_resolution_times(categorized['external'])
+                        external_durations = calculate_func(categorized['external'], collaborators)
                         external_stats = analyzer.analyze_resolution_times(external_durations)
-                        analyzer.print_results(external_stats, "EXTERNAL USER ISSUES - RESOLUTION TIME ANALYSIS")
+                        analyzer.print_results(external_stats, f"EXTERNAL USER ISSUES - {analysis_type} ANALYSIS", analysis_type)
                         if args.html:
                             html_data['External Users'] = external_durations
             else:
                 # Standard analysis of all issues
-                durations = analyzer.calculate_resolution_times(issues)
+                durations = calculate_func(issues, collaborators)
                 stats = analyzer.analyze_resolution_times(durations)
-                analyzer.print_results(stats)
+                analyzer.print_results(stats, f"GITHUB ISSUE {analysis_type} ANALYSIS", analysis_type)
                 
-                # Prepare HTML data
                 if args.html:
                     html_data['All Issues'] = durations
             
             # Generate HTML report if requested
             if args.html and html_data:
-                analyzer.generate_html_report(html_data, args.html, args.repo)
+                analyzer.generate_html_report(html_data, args.html, args.repo, metric_name)
         else:
             print("Analysis of resolution times is only available for closed issues.")
             
