@@ -570,7 +570,7 @@ class GitHubIssueAnalyzer:
                     x: {
                         title: {
                             display: true,
-                            text: '''' + metric_name + ''' (Days)'
+                            text: metric_name + ' (Days)'
                         }
                     },
                     y: {
